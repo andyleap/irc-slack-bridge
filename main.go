@@ -120,6 +120,7 @@ func main() {
 			}
 		case *slack.MessageEvent: //func(text string, source User, channel string, response MessageTarget)
 			if ev.Channel == slackChannel.ID {
+
 				if ircuser, ok := ircClients.Load().(map[string]*IRCUser)[ev.User]; ok {
 					text := html.UnescapeString(ev.Text)
 					if ev.SubType == "" {
@@ -131,15 +132,15 @@ func main() {
 						ircuser.Conn.Action(Config.Channel, text)
 					} else if ev.SubType == "me_message" {
 						ircuser.Conn.Action(Config.Channel, text)
-					} else if ev.SubType == "channel_join" {
-						user, err := slackClient.GetUserInfo(ev.User)
-						if err != nil {
-							log.Printf("Unable to get user info for %s: %s", ev.User, err)
-						} else {
-							AddUser(user.Name, user.ID)
-						}
 					} else if ev.SubType == "channel_leave" {
 						RemoveUser(ev.User)
+					}
+				} else if ev.SubType == "channel_join" {
+					user, err := slackClient.GetUserInfo(ev.User)
+					if err != nil {
+						log.Printf("Unable to get user info for %s: %s", ev.User, err)
+					} else {
+						AddUser(user.Name, user.ID)
 					}
 				}
 			}
@@ -185,6 +186,7 @@ func AddUser(username string, id string) error {
 			ircuser.Conn.Away("")
 		}
 		userConn.Join(Config.Channel)
+		log.Printf("User %s connected", username)
 	})
 	userConn.HandleFunc(irc.DISCONNECTED,
 		func(conn *irc.Conn, line *irc.Line) {
@@ -205,6 +207,7 @@ func AddUser(username string, id string) error {
 	}
 	m2[id] = ircuser
 	ircClients.Store(m2)
+	log.Printf("User %s added", username)
 	return nil
 }
 
